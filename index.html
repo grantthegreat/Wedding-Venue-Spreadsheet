@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Venue Spreadsheet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        input[type="text"], input[type="number"], select { width: 100%; box-sizing: border-box; }
+        textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+        #addVenue, #exportCsv { margin-top: 20px; padding: 10px; }
+        .description { font-size: 0.8em; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Wedding Venue Spreadsheet</h1>
+    <table id="venueTable">
+        <thead>
+            <tr>
+                <th>Venue Name<div class="description">Official name of the venue</div></th>
+                <th>Cost ($)<div class="description">Total rental cost</div></th>
+                <th>Capacity<div class="description">Max guest count</div></th>
+                <th>Indoor/Outdoor<div class="description">Available spaces</div></th>
+                <th>Catering<div class="description">Food service options</div></th>
+                <th>Ceremony Space<div class="description">Separate area for ceremony</div></th>
+                <th>Rental Duration (hrs)<div class="description">Total time, including setup/cleanup</div></th>
+                <th>Score<div class="description">Calculated rating</div></th>
+            </tr>
+        </thead>
+        <tbody id="venueBody"></tbody>
+    </table>
+    <button id="addVenue">Add Venue</button>
+    <button id="exportCsv">Export to CSV</button>
+
+    <script>
+        const venueBody = document.getElementById('venueBody');
+        const addVenueBtn = document.getElementById('addVenue');
+        const exportCsvBtn = document.getElementById('exportCsv');
+
+        function createRow() {
+            const row = venueBody.insertRow();
+            const fields = [
+                {type: 'textarea', name: 'venueName'},
+                {type: 'number', name: 'venueCost'},
+                {type: 'number', name: 'capacity'},
+                {type: 'select', name: 'indoorOutdoor', options: ['Indoor', 'Outdoor', 'Both']},
+                {type: 'select', name: 'catering', options: ['In-house', 'External', 'Both']},
+                {type: 'select', name: 'ceremonySpace', options: ['Yes', 'No']},
+                {type: 'number', name: 'rentalDuration'},
+                {type: 'number', name: 'score', readonly: true}
+            ];
+
+            fields.forEach(field => {
+                const cell = row.insertCell();
+                if (field.type === 'select') {
+                    const select = document.createElement('select');
+                    select.name = field.name;
+                    field.options.forEach(option => {
+                        const opt = document.createElement('option');
+                        opt.value = option;
+                        opt.textContent = option;
+                        select.appendChild(opt);
+                    });
+                    cell.appendChild(select);
+                } else if (field.type === 'textarea') {
+                    const textarea = document.createElement('textarea');
+                    textarea.name = field.name;
+                    textarea.rows = 2;
+                    cell.appendChild(textarea);
+                } else {
+                    const input = document.createElement('input');
+                    input.type = field.type;
+                    input.name = field.name;
+                    if (field.readonly) input.readOnly = true;
+                    cell.appendChild(input);
+                }
+            });
+
+            row.addEventListener('input', calculateScore);
+        }
+
+        function calculateScore(event) {
+            const row = event.target.closest('tr');
+            let score = 0;
+
+            // Example scoring logic (adjust as needed)
+            score += parseInt(row.querySelector('[name="capacity"]').value) || 0;
+            score -= parseInt(row.querySelector('[name="venueCost"]').value) / 100 || 0;
+            score += row.querySelector('[name="indoorOutdoor"]').value === 'Both' ? 20 : 10;
+            score += row.querySelector('[name="ceremonySpace"]').value === 'Yes' ? 20 : 0;
+            score += parseInt(row.querySelector('[name="rentalDuration"]').value) || 0;
+
+            row.querySelector('[name="score"]').value = Math.round(score);
+        }
+
+        function exportToCsv() {
+            const rows = Array.from(venueBody.querySelectorAll('tr')).map(row => {
+                return Array.from(row.querySelectorAll('textarea, input, select')).map(input => input.value);
+            });
+
+            const headers = Array.from(document.querySelectorAll('#venueTable th')).map(th => th.textContent.split('\n')[0]);
+            const csv = Papa.unparse([headers, ...rows]);
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (navigator.msSaveBlob) {
+                navigator.msSaveBlob(blob, 'wedding_venues.csv');
+            } else {
+                link.href = URL.createObjectURL(blob);
+                link.download = 'wedding_venues.csv';
+                link.click();
+            }
+        }
+
+        addVenueBtn.addEventListener('click', createRow);
+        exportCsvBtn.addEventListener('click', exportToCsv);
+
+        // Initialize with one empty row
+        createRow();
+    </script>
+</body>
+</html>
